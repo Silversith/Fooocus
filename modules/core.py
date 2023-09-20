@@ -175,7 +175,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0,
     def callback(step, x0, x, total_steps):
         y = None
         if previewer is not None:
-            y = previewer(x0, step, total_steps)
+            y = previewer.decode_latent_to_preview(x0)
         if callback_function is not None:
             callback_function(step, x0, x, total_steps, y)
         pbar.update_absolute(step + 1, total_steps, None)
