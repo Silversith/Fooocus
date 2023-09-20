@@ -3,9 +3,12 @@ import random
 import einops
 import torch
 import numpy as np
+from PIL import Image
 
 import comfy.model_management
 import comfy.utils
+import modules.path
+from comfy.cli_args import LatentPreviewMethod
 
 from comfy.sd import load_checkpoint_guess_config
 from nodes import VAEDecode, EmptyLatentImage, VAEEncode, VAEEncodeTiled, VAEDecodeTiled, VAEEncodeForInpaint
@@ -15,7 +18,7 @@ from comfy.sd import model_lora_keys_unet, model_lora_keys_clip, load_lora
 from modules.samplers_advanced import KSamplerBasic, KSamplerWithRefiner
 from modules.patch import patch_all
 from comfy.taesd.taesd import TAESD
-from latent_preview import LatentPreviewer, TAESDPreviewerImpl, get_previewer
+from latent_preview import LatentPreviewer, TAESDPreviewerImpl, get_previewer, Latent2RGBPreviewer
 
 patch_all()
 opEmptyLatentImage = EmptyLatentImage()
@@ -33,7 +36,8 @@ class StableDiffusionModel:
             if unet is not None:
                 unet.model.model_file = dict(filename=model_filename, prefix='model')
             if clip is not None:
-                clip.cond_stage_model.model_file = dict(filename=model_filename, prefix='refiner_clip' if is_refiner else 'base_clip')
+                clip.cond_stage_model.model_file = dict(filename=model_filename,
+                                                        prefix='refiner_clip' if is_refiner else 'base_clip')
             if vae is not None:
                 vae.first_stage_model.model_file = dict(filename=model_filename, prefix='first_stage_model')
         self.unet = unet
@@ -137,9 +141,11 @@ class VAEApprox(torch.nn.Module):
 
 VAE_approx_model = None
 
+
 @torch.no_grad()
 @torch.inference_mode()
-def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sampler_name='dpmpp_fooocus_2m_sde_inpaint_seamless',
+def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0,
+             sampler_name='dpmpp_fooocus_2m_sde_inpaint_seamless',
              scheduler='karras', denoise=1.0, disable_noise=False, start_step=None, last_step=None,
              force_full_denoise=False, callback_function=None):
     # SCHEDULERS = ["normal", "karras", "exponential", "simple", "ddim_uniform"]
@@ -192,7 +198,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
     models = load_additional_models(positive, negative, model.model_dtype())
 
     sampler = KSamplerBasic(real_model, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler,
-                       denoise=denoise, model_options=model.model_options)
+                            denoise=denoise, model_options=model.model_options)
 
     samples = sampler.sample(noise, positive_copy, negative_copy, cfg=cfg, latent_image=latent_image,
                              start_step=start_step, last_step=last_step, force_full_denoise=force_full_denoise,
@@ -212,7 +218,8 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
 @torch.no_grad()
 @torch.inference_mode()
 def ksampler_with_refiner(model, positive, negative, refiner, refiner_positive, refiner_negative, latent,
-                          seed=None, steps=30, refiner_switch_step=20, cfg=7.0, sampler_name='dpmpp_fooocus_2m_sde_inpaint_seamless',
+                          seed=None, steps=30, refiner_switch_step=20, cfg=7.0,
+                          sampler_name='dpmpp_fooocus_2m_sde_inpaint_seamless',
                           scheduler='karras', denoise=1.0, disable_noise=False, start_step=None, last_step=None,
                           force_full_denoise=False, callback_function=None):
     # SCHEDULERS = ["normal", "karras", "exponential", "simple", "ddim_uniform"]
@@ -235,14 +242,22 @@ def ksampler_with_refiner(model, positive, negative, refiner, refiner_positive, 
     if "noise_mask" in latent:
         noise_mask = latent["noise_mask"]
 
-    previewer = get_previewer(device, model.model.latent_format)
-
+    previewer = get_previewer_core(device, model.model.latent_format)
+    if previewer is None:
+        print("Previewer Not Loaded")
+    else:
+        print("Previewer Loaded")
     pbar = comfy.utils.ProgressBar(steps)
 
     def callback(step, x0, x, total_steps):
         y = None
+        print("Callback Called")
+        if previewer is None:
+            print("Callback Previewer Not Loaded")
+        else:
+            print("Callback Previewer Loaded")
         if previewer is not None:
-            y = previewer(x0, step, total_steps)
+            y = previewer.decode_latent_to_preview(x0)
         if callback_function is not None:
             callback_function(step, x0, x, total_steps, y)
         pbar.update_absolute(step + 1, total_steps, None)
@@ -274,7 +289,8 @@ def ksampler_with_refiner(model, positive, negative, refiner, refiner_positive, 
                              refiner_negative=refiner_negative_copy, refiner_switch_step=refiner_switch_step,
                              cfg=cfg, latent_image=latent_image,
                              start_step=start_step, last_step=last_step, force_full_denoise=force_full_denoise,
-                             denoise_mask=noise_mask, sigmas=sigmas, callback_function=callback, disable_pbar=disable_pbar,
+                             denoise_mask=noise_mask, sigmas=sigmas, callback_function=callback,
+                             disable_pbar=disable_pbar,
                              seed=seed)
 
     samples = samples.cpu()
@@ -285,6 +301,35 @@ def ksampler_with_refiner(model, positive, negative, refiner, refiner_positive, 
     out["samples"] = samples
 
     return out
+
+
+class TAESDPreviewerImplCore(LatentPreviewer):
+    def __init__(self, taesd):
+        self.taesd = taesd
+
+    @torch.no_grad()
+    @torch.inference_mode()
+    def decode_latent_to_preview(self, x0):
+        x_sample = self.taesd.decoder(x0)[0].detach()
+        x_sample = x_sample.sub(0.5).mul(2)
+
+        x_sample = torch.clamp((x_sample + 1.0) / 2.0, min=0.0, max=1.0)
+        x_sample = 255. * np.moveaxis(x_sample.cpu().numpy(), 0, 2)
+        x_sample = x_sample.astype(np.uint8)
+
+        preview_image = Image.fromarray(x_sample)
+        return preview_image
+
+
+@torch.no_grad()
+@torch.inference_mode()
+def get_previewer_core(device, latent_format):
+    taesd_decoder_path = os.path.abspath(
+        os.path.realpath(os.path.join(modules.path.vae_approx_path, latent_format.taesd_decoder_name)))
+    print("Decoder Path %s " % taesd_decoder_path)
+    taesd = TAESD(None, taesd_decoder_path).to(device)
+    previewer = TAESDPreviewerImplCore(taesd)
+    return previewer
 
 
 @torch.no_grad()
