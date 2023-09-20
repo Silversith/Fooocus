@@ -14,7 +14,8 @@ from comfy.model_base import SDXLRefiner
 from comfy.sd import model_lora_keys_unet, model_lora_keys_clip, load_lora
 from modules.samplers_advanced import KSamplerBasic, KSamplerWithRefiner
 from modules.patch import patch_all
-
+from comfy.taesd.taesd import TAESD
+from latent_preview import LatentPreviewer, TAESDPreviewerImpl, get_previewer
 
 patch_all()
 opEmptyLatentImage = EmptyLatentImage()
@@ -135,42 +136,6 @@ class VAEApprox(torch.nn.Module):
 
 
 VAE_approx_model = None
-
-
-@torch.no_grad()
-@torch.inference_mode()
-def get_previewer(device, latent_format):
-    global VAE_approx_model
-    # if VAE_approx_model is None:
-    #     from modules.path import vae_approx_path
-    #     vae_approx_filename = os.path.join(vae_approx_path, VAE_approx_model)
-    #     sd = torch.load(vae_approx_filename, map_location='cpu')
-    #     VAE_approx_model = VAEApprox()
-    #     VAE_approx_model.load_state_dict(sd)
-    #     del sd
-    #     VAE_approx_model.eval()
-    #
-    #     if comfy.model_management.should_use_fp16():
-    #         VAE_approx_model.half()
-    #         VAE_approx_model.current_type = torch.float16
-    #     else:
-    #         VAE_approx_model.float()
-    #         VAE_approx_model.current_type = torch.float32
-    #
-    #     VAE_approx_model.to(comfy.model_management.get_torch_device())
-
-    @torch.no_grad()
-    @torch.inference_mode()
-    def preview_function(x0, step, total_steps):
-        with torch.no_grad():
-            x_sample = x0.to(VAE_approx_model.current_type)
-            x_sample = VAE_approx_model(x_sample) * 127.5 + 127.5
-            x_sample = einops.rearrange(x_sample, 'b c h w -> b h w c')[0]
-            x_sample = x_sample.cpu().numpy().clip(0, 255).astype(np.uint8)
-            return x_sample
-
-    return preview_function
-
 
 @torch.no_grad()
 @torch.inference_mode()
