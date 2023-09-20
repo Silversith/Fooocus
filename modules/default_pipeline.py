@@ -36,15 +36,15 @@ def refresh_base_model(name):
         xl_base = None
 
     xl_base = core.load_model(filename)
-    if not isinstance(xl_base.unet.model, SDXL):
-        print('Model not supported. Fooocus only support SDXL model as the base model.')
-        xl_base = None
-        xl_base_hash = ''
-        refresh_base_model(modules.path.default_base_model_name)
-        xl_base_hash = model_hash
-        xl_base_patched = xl_base
-        xl_base_patched_hash = ''
-        return
+    # if not isinstance(xl_base.unet.model, SDXL):
+    #     print('Model not supported. Fooocus only support SDXL model as the base model.')
+    #     xl_base = None
+    #     xl_base_hash = ''
+    #     refresh_base_model(modules.path.default_base_model_name)
+    #     xl_base_hash = model_hash
+    #     xl_base_patched = xl_base
+    #     xl_base_patched_hash = ''
+    #     return
 
     xl_base_hash = model_hash
     xl_base_patched = xl_base
@@ -75,12 +75,12 @@ def refresh_refiner_model(name):
         xl_refiner = None
 
     xl_refiner = core.load_model(filename)
-    if not isinstance(xl_refiner.unet.model, SDXLRefiner):
-        print('Model not supported. Fooocus only support SDXL refiner as the refiner.')
-        xl_refiner = None
-        xl_refiner_hash = ''
-        print(f'Refiner unloaded.')
-        return
+    # if not isinstance(xl_refiner.unet.model, SDXLRefiner):
+    #     print('Model not supported. Fooocus only support SDXL refiner as the refiner.')
+    #     xl_refiner = None
+    #     xl_refiner_hash = ''
+    #     print(f'Refiner unloaded.')
+    #     return
 
     xl_refiner_hash = model_hash
     print(f'Refiner model loaded: {model_hash}')
@@ -195,7 +195,7 @@ def refresh_everything(refiner_model_name, base_model_name, loras):
 refresh_everything(
     refiner_model_name=modules.path.default_refiner_model_name,
     base_model_name=modules.path.default_base_model_name,
-    loras=[(modules.path.default_lora_name, 0.5), ('None', 0.5), ('None', 0.5), ('None', 0.5), ('None', 0.5)]
+    loras=[('None', 0.5), ('None', 0.5), ('None', 0.5), ('None', 0.5), ('None', 0.5)]
 )
 
 expansion = FooocusExpansion()

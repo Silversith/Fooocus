@@ -141,24 +141,23 @@ VAE_approx_model = None
 @torch.inference_mode()
 def get_previewer(device, latent_format):
     global VAE_approx_model
-
-    if VAE_approx_model is None:
-        from modules.path import vae_approx_path
-        vae_approx_filename = os.path.join(vae_approx_path, 'xlvaeapp.pth')
-        sd = torch.load(vae_approx_filename, map_location='cpu')
-        VAE_approx_model = VAEApprox()
-        VAE_approx_model.load_state_dict(sd)
-        del sd
-        VAE_approx_model.eval()
-
-        if comfy.model_management.should_use_fp16():
-            VAE_approx_model.half()
-            VAE_approx_model.current_type = torch.float16
-        else:
-            VAE_approx_model.float()
-            VAE_approx_model.current_type = torch.float32
-
-        VAE_approx_model.to(comfy.model_management.get_torch_device())
+    # if VAE_approx_model is None:
+    #     from modules.path import vae_approx_path
+    #     vae_approx_filename = os.path.join(vae_approx_path, VAE_approx_model)
+    #     sd = torch.load(vae_approx_filename, map_location='cpu')
+    #     VAE_approx_model = VAEApprox()
+    #     VAE_approx_model.load_state_dict(sd)
+    #     del sd
+    #     VAE_approx_model.eval()
+    #
+    #     if comfy.model_management.should_use_fp16():
+    #         VAE_approx_model.half()
+    #         VAE_approx_model.current_type = torch.float16
+    #     else:
+    #         VAE_approx_model.float()
+    #         VAE_approx_model.current_type = torch.float32
+    #
+    #     VAE_approx_model.to(comfy.model_management.get_torch_device())
 
     @torch.no_grad()
     @torch.inference_mode()

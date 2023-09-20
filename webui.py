@@ -134,13 +134,13 @@ with shared.gradio_root:
                                                     label='Image Style')
             with gr.Tab(label='Advanced'):
                 with gr.Row():
-                    base_model = gr.Dropdown(label='SDXL Base Model', choices=modules.path.model_filenames, value=modules.path.default_base_model_name, show_label=True)
-                    refiner_model = gr.Dropdown(label='SDXL Refiner', choices=['None'] + modules.path.model_filenames, value=modules.path.default_refiner_model_name, show_label=True)
+                    base_model = gr.Dropdown(label='Base Model', choices=modules.path.model_filenames, value=modules.path.default_base_model_name, show_label=True)
+                    refiner_model = gr.Dropdown(label='Refiner', choices=['None'] + modules.path.model_filenames, value=modules.path.default_refiner_model_name, show_label=True)
                 with gr.Accordion(label='LoRAs', open=True):
                     lora_ctrls = []
                     for i in range(5):
                         with gr.Row():
-                            lora_model = gr.Dropdown(label=f'SDXL LoRA {i+1}', choices=['None'] + modules.path.lora_filenames, value=modules.path.default_lora_name if i == 0 else 'None')
+                            lora_model = gr.Dropdown(label=f'LoRA {i+1}', choices=['None'] + modules.path.lora_filenames, value=modules.path.default_lora_name if i == 0 else 'None')
                             lora_weight = gr.Slider(label='Weight', minimum=-2, maximum=2, step=0.01, value=modules.path.default_lora_weight)
                             lora_ctrls += [lora_model, lora_weight]
                 with gr.Row():
