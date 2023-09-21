@@ -57,6 +57,8 @@ class FooocusExpansion:
         tokenized_kwargs.data['input_ids'] = tokenized_kwargs.data['input_ids'].to(self.patcher.load_device)
         tokenized_kwargs.data['attention_mask'] = tokenized_kwargs.data['attention_mask'].to(self.patcher.load_device)
 
+        # https://huggingface.co/blog/introducing-csearch
+        # https://huggingface.co/docs/transformers/generation_strategies
         features = self.model.generate(**tokenized_kwargs,
                                        num_beams=1,
                                        max_new_tokens=256,
