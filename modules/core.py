@@ -243,19 +243,10 @@ def ksampler_with_refiner(model, positive, negative, refiner, refiner_positive, 
         noise_mask = latent["noise_mask"]
 
     previewer = get_previewer_core(device, model.model.latent_format)
-    if previewer is None:
-        print("Previewer Not Loaded")
-    else:
-        print("Previewer Loaded")
     pbar = comfy.utils.ProgressBar(steps)
 
     def callback(step, x0, x, total_steps):
         y = None
-        print("Callback Called")
-        if previewer is None:
-            print("Callback Previewer Not Loaded")
-        else:
-            print("Callback Previewer Loaded")
         if previewer is not None:
             y = previewer.decode_latent_to_preview(x0)
         if callback_function is not None:
@@ -326,7 +317,6 @@ class TAESDPreviewerImplCore(LatentPreviewer):
 def get_previewer_core(device, latent_format):
     taesd_decoder_path = os.path.abspath(
         os.path.realpath(os.path.join(modules.path.vae_approx_path, latent_format.taesd_decoder_name)))
-    print("Decoder Path %s " % taesd_decoder_path)
     taesd = TAESD(None, taesd_decoder_path).to(device)
     previewer = TAESDPreviewerImplCore(taesd)
     return previewer

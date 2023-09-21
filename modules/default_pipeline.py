@@ -36,20 +36,9 @@ def refresh_base_model(name):
         xl_base = None
 
     xl_base = core.load_model(filename)
-    # if not isinstance(xl_base.unet.model, SDXL):
-    #     print('Model not supported. Fooocus only support SDXL model as the base model.')
-    #     xl_base = None
-    #     xl_base_hash = ''
-    #     refresh_base_model(modules.path.default_base_model_name)
-    #     xl_base_hash = model_hash
-    #     xl_base_patched = xl_base
-    #     xl_base_patched_hash = ''
-    #     return
-
     xl_base_hash = model_hash
     xl_base_patched = xl_base
     xl_base_patched_hash = ''
-    print(f'Base model loaded: {model_hash}')
     return
 
 
@@ -67,7 +56,6 @@ def refresh_refiner_model(name):
     if name == 'None':
         xl_refiner = None
         xl_refiner_hash = ''
-        print(f'Refiner unloaded.')
         return
 
     if xl_refiner is not None:
@@ -83,8 +71,6 @@ def refresh_refiner_model(name):
     #     return
 
     xl_refiner_hash = model_hash
-    print(f'Refiner model loaded: {model_hash}')
-
     xl_refiner.vae.first_stage_model.to('meta')
     xl_refiner.vae = None
     return
@@ -112,8 +98,6 @@ def refresh_loras(loras):
         model = core.load_sd_lora(model, filename, strength_model=weight, strength_clip=weight)
     xl_base_patched = model
     xl_base_patched_hash = str(loras)
-    print(f'LoRAs loaded: {xl_base_patched_hash}')
-
     return
 
 
