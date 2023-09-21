@@ -45,7 +45,7 @@ with open(config_path, "w", encoding="utf-8") as json_file:
 os.makedirs(temp_outputs_path, exist_ok=True)
 
 default_base_model_name = "htPhotorealismV417_v417SD15.safetensors"
-default_refiner_model_name = "htPhotorealismV417_v417SD15.safetensors"
+default_refiner_model_name = "None"
 default_lora_name = "None"
 default_lora_weight = 0.5
 
